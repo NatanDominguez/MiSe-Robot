@@ -6,20 +6,23 @@
  * main.c
  */
 
+uint16_t delay_counter = 0;
+
 int main(void)
 {
 	WDTCTL = WDTPW | WDTHOLD;	// stop watchdog timer
 	
-
 	//init
 	init_clocks();
 
 	while(1){
 
+	delay_counter(1000);
 	}
+	delay_counter = 0;
 
+	return 0;
 }
-
 
 void init_clocks(){
     FRCTL0 = FRCTLPW | NWAITS_1;
@@ -39,4 +42,26 @@ void init_clocks(){
     P1DIR |= BIT0 | BIT1; // set SMCLK, ACLK pin as output
     P1SEL1 |= BIT0 | BIT1; // set SMCLK and ACLK pin as second function
     PM5CTL0 &= ~LOCKLPM5;
+}
+
+void init_timers(){
+
+}
+
+void init_gpios(){
+
+}
+
+void delay_ms(uint8_t temps){
+
+    while(TA... < temps){
+        continue;
+    }
+
+    delay_counter = 0;
+}
+
+
+#pragma TIMER_A0 {
+    delay_counter++;
 }
