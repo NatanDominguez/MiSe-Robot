@@ -7,39 +7,13 @@
  * main.c
  */
 
-int main(void)
-{
 
-    uint16_t delay_counter = 0;
-    uint8_t data_transmit[16];
-    uint8_t *PTxData; // Pointer to TX data
-    uint8_t TXByteCtr;
-    uint8_t *PRxData; // Pointer to RX data
-    uint8_t RXByteCtr;
-
-    WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
-
-    //init
-    init_clocks();
-    init_timers();
-    init_gpios();
-
-    i2c_init();
-
-    _enable_interrupt();
-
-    while(1){
-        data_transmit[0] = 0x00;
-        data_transmit[1] = 0x01;
-        data_transmit[2] = 0x0A;
-        data_transmit[3] = 0x01;
-        data_transmit[4] = 0x0A;
-        I2C_send(0x10, data_transmit, 5);
-        delay_ms(100);
-    }
-
-    return;
-}
+uint16_t delay_counter = 0;
+uint8_t data_transmit[16];
+uint8_t *PTxData; // Pointer to TX data
+uint8_t TXByteCtr;
+uint8_t *PRxData; // Pointer to RX data
+uint8_t RXByteCtr;
 
 void delay_ms(uint8_t temps){
     /*
@@ -180,3 +154,52 @@ void I2C_send(uint8_t addr, uint8_t *buffer, uint8_t n_dades){
     __no_operation(); //Resta en mode LPM0 fins que es trasmetin les dades
     while (UCB0CTLW0 & UCTXSTP); //Ens assegurem que s'ha enviat la condició de stop
 }
+
+
+
+int main(void)
+{
+
+    uint16_t delay_counter = 0;
+    uint8_t data_transmit[16];
+    uint8_t *PTxData; // Pointer to TX data
+    uint8_t TXByteCtr;
+    uint8_t *PRxData; // Pointer to RX data
+    uint8_t RXByteCtr;
+
+    WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
+
+    //init
+    init_clocks();
+    init_timers();
+    init_gpios();
+
+    i2c_init();
+
+    _enable_interrupt();
+
+    while(1){
+
+        data_transmit[0] = 0x00;
+        data_transmit[1] = 0x01;
+        data_transmit[2] = 0xFF;
+        data_transmit[3] = 0x01;
+        data_transmit[4] = 0xFF;
+        I2C_send(0x10, data_transmit, 5);
+        delay_ms(1200);
+
+        data_transmit[0] = 0x00;
+        data_transmit[1] = 0x01;
+        data_transmit[2] = 0xFF;
+        data_transmit[3] = 0x00;
+        data_transmit[4] = 0xFF;
+        I2C_send(0x10, data_transmit, 5);
+
+        delay_ms(1200);
+
+    }
+
+    return;
+}
+
+
