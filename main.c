@@ -49,35 +49,32 @@ void init_timers(){
     TB0CTL = (TBSSEL_2|MC_1);  //SMCLK i UP mode
     TB0CCTL0 = CCIE;    //capture/compare interrupt enable
     TB0CCR0 = 16000;  //1 ms
-
-    return;
 }
 void delay_ms(uint8_t temps){
     /*
      *
      *aquesta funció genera un delay a partir d'un timer
+     *
     */
 
-    TB0CCR0 = 16000*temps;   // temps en ms
+    TB0CCR0 = 16000;   // no cal però assegurem que l'escala de temps es troba en 1 ms
     while(delay_counter < temps){
         continue;
     }
 
     delay_counter = 0;
-    return;
 }
 
 
 
 void init_gpios(){
+
+    //RESET LCD
     P5SEL0 &= !BIT2;
     P5SEL1 &= !BIT2;
     P5DIR |= BIT2;
+    P5OUT &= !BIT2;
 }
-
-
-
-
 
 
 //--------------------------------------------- i2c_ctr
@@ -157,15 +154,14 @@ void I2C_send(uint8_t addr, uint8_t *buffer, uint8_t n_dades){
 }
 
 
-
-
-
+void LCD_reset(){
+    P5OUT &= !BIT2;
+    delay_ms(100);
+    P5OUT |= BIT2;
+}
 
 void LCD_init(){
-    P5OUT &= !BIT2;
-    delay_ms(10);
-    P5OUT |= BIT2;
-
+    LCD_reset();
 
     data_LCD_init[0] = 0x00;
     data_LCD_init[1] = 0x39;
@@ -179,16 +175,11 @@ void LCD_init(){
     I2C_send(0x3E, data_LCD_init, 8);
 
     delay_ms(500);
-    return;
 }
 
 void LCD_write(){
-    P5OUT &= !BIT2;
-    delay_ms(10);
-    P5OUT |= BIT2;
+    LCD_reset();
     I2C_send(0x3E, data_LCD, longitud);
-
-    return;
 }
 
 
@@ -200,7 +191,6 @@ void motor_davant(uint8_t vel_davant, uint8_t t_ms){
     data_transmit[4] = vel_davant;
     I2C_send(0x10, data_transmit, 5);
     delay_ms(t_ms);
-    return;
 }
 
 void motor_darrere(uint8_t vel_darrere, uint8_t t_ms){
@@ -211,7 +201,6 @@ void motor_darrere(uint8_t vel_darrere, uint8_t t_ms){
     data_transmit[4] = vel_darrere;
     I2C_send(0x10, data_transmit, 5);
     delay_ms(t_ms);
-    return;
 }
 
 void motor_esquerra(uint8_t vel_esquerra, uint8_t t_ms){
@@ -222,8 +211,6 @@ void motor_esquerra(uint8_t vel_esquerra, uint8_t t_ms){
     data_transmit[4] = vel_esquerra/8;
     I2C_send(0x10, data_transmit, 5);
     delay_ms(t_ms);
-
-    return;
 }
 
 void motor_dreta(uint8_t vel_dreta, uint8_t t_ms){
@@ -234,8 +221,6 @@ void motor_dreta(uint8_t vel_dreta, uint8_t t_ms){
     data_transmit[4] = vel_dreta;
     I2C_send(0x10, data_transmit, 5);
     delay_ms(t_ms);
-
-    return;
 }
 
 
@@ -270,18 +255,8 @@ int main(void)
     return;
 }
 
-
-
-
-
 #pragma vector = TIMER0_B0_VECTOR
 __interrupt void counter(){
     delay_counter++;
     TB0CCTL0 &= ~CCIFG;
 }
-
-
-
-
-
-
