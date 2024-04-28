@@ -15,6 +15,10 @@ uint8_t TXByteCtr;
 uint8_t *PRxData; // Pointer to RX data
 uint8_t RXByteCtr;
 uint8_t longitud;
+uint8_t data_transmit[8];
+uint8_t data_LCD[17];
+uint8_t data_LCD_init[8];
+
 
 
 
@@ -45,24 +49,32 @@ void init_timers(){
     TB0CTL = (TBSSEL_2|MC_1);  //SMCLK i UP mode
     TB0CCTL0 = CCIE;    //capture/compare interrupt enable
     TB0CCR0 = 16000;  //1 ms
-
-    return;
 }
 
+void delay_ms(uint8_t temps){
+    /*
+      Aquesta funció genera un delay a partir d'un timer
+    */
+    
+    TB0CTL |= MC_1; //activem UP mode
+    delay_counter = 0;
+    TB0CCR0 = 16000;   // no cal però assegurem que l'escala de temps es troba en 1 ms
+    while(delay_counter < temps){
+        continue;
+    }
+    TB0CTL &= ~MC_1; //desactivem l'UP mode
+}
 
 
 
 void init_gpios(){
-    P5SEL |= BIT2;
+
+    //RESET LCD
+    P5SEL0 &= !BIT2;
+    P5SEL1 &= !BIT2;
     P5DIR |= BIT2;
-    delay_ms(10);
-
-    return;
+    P5OUT &= !BIT2;
 }
-
-
-
-
 
 
 //--------------------------------------------- i2c_ctr
@@ -142,63 +154,43 @@ void I2C_send(uint8_t addr, uint8_t *buffer, uint8_t n_dades){
 }
 
 
-
-void delay_ms(uint8_t temps){
-    /*
-     *
-     *aquesta funció genera un delay a partir d'un timer
-    */
-
-    TB0CCR0 = 16000*temps;   // temps en ms
-    while(delay_counter < temps){
-        continue;
-    }
-
-    delay_counter = 0;
-    return;
+void LCD_reset(){
+    P5OUT &= !BIT2;
+    delay_ms(100);
+    P5OUT |= BIT2;
 }
 
-
 void LCD_init(){
-    P5OUT &= !BIT2;
-    delay(10);
-    P5OUT |= BIT2;
+    LCD_reset();
 
-    uint8_t data_LCD_init[8];
-
-    data_LCD_init[0] = 0x00;
-    data_LCD_init[1] = 0x39;
-    data_LCD_init[2] = 0x14;
-    data_LCD_init[3] = 0x74;
-    data_LCD_init[4] = 0x54;
-    data_LCD_init[5] = 0x6F;
-    data_LCD_init[6] = 0x0C;
-    data_LCD_init[7] = 0x01;
+    data_LCD_init[0] = 0x00;    //write command
+    data_LCD_init[1] = 0x39;    //function set
+    data_LCD_init[2] = 0x14;    //OSC frequency
+    data_LCD_init[3] = 0x74;    //Contrast
+    data_LCD_init[4] = 0x54;    //ICON control
+    data_LCD_init[5] = 0x6F;    //Follower control
+    data_LCD_init[6] = 0x0C;    //Display ON/OFF
+    data_LCD_init[7] = 0x01;    //Clear
 
     I2C_send(0x3E, data_LCD_init, 8);
 
     delay_ms(500);
-    return;
 }
 
 void LCD_write(){
-    P5OUT &= !BIT2;
-    delay(10);
-    P5OUT |= BIT2;
+    LCD_reset();
     I2C_send(0x3E, data_LCD, longitud);
-
-    return;
 }
 
 
-void motor_davant(uint8_t vel_davant){
+void motor_davant(uint8_t vel_davant, uint8_t t_ms){
     data_transmit[0] = 0x00;
     data_transmit[1] = 0x01;
     data_transmit[2] = vel_davant;
     data_transmit[3] = 0x01;
     data_transmit[4] = vel_davant;
-    I2C_send(0x3E, data_transmit, longitud);
-    return;
+    I2C_send(0x10, data_transmit, 5);
+    delay_ms(t_ms);
 }
 
 void motor_darrere(uint8_t vel_darrere, uint8_t t_ms){
@@ -207,9 +199,8 @@ void motor_darrere(uint8_t vel_darrere, uint8_t t_ms){
     data_transmit[2] = vel_darrere;
     data_transmit[3] = 0x02;
     data_transmit[4] = vel_darrere;
-    I2C_send(0x3E, data_transmit, longitud);
+    I2C_send(0x10, data_transmit, 5);
     delay_ms(t_ms);
-    return;
 }
 
 void motor_esquerra(uint8_t vel_esquerra, uint8_t t_ms){
@@ -217,34 +208,26 @@ void motor_esquerra(uint8_t vel_esquerra, uint8_t t_ms){
     data_transmit[1] = 0x01;
     data_transmit[2] = vel_esquerra;
     data_transmit[3] = 0x01;
-    data_transmit[4] = vel_esquerra/4;
-    I2C_send(0x3E, data_transmit, longitud);
+    data_transmit[4] = vel_esquerra/8;
+    I2C_send(0x10, data_transmit, 5);
     delay_ms(t_ms);
-
-    return;
 }
 
-void motor_esquerra(uint8_t vel_dreta, uint8_t t_ms){
+void motor_dreta(uint8_t vel_dreta, uint8_t t_ms){
     data_transmit[0] = 0x00;
     data_transmit[1] = 0x01;
-    data_transmit[2] = vel_dreta;
+    data_transmit[2] = vel_dreta/8;
     data_transmit[3] = 0x01;
-    data_transmit[4] = vel_dreta/4;
-    I2C_send(0x3E, data_transmit, longitud);
+    data_transmit[4] = vel_dreta;
+    I2C_send(0x10, data_transmit, 5);
     delay_ms(t_ms);
-
-    return;
 }
 
 
 int main(void)
 {
-    uint8_t data_transmit[8];
-    uint8_t data_LCD[17];
-    uint8_t longitud;
-
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
-
+    _enable_interrupt();
     //init
     init_clocks();
     init_timers();
@@ -254,34 +237,26 @@ int main(void)
 
     LCD_init();
 
-    _enable_interrupt();
-
-    longitud = sprintf(data_LCD, "@aa              ");
+    longitud = sprintf(data_LCD, "@Inicialització robot");
+    LCD_write();
 
     while(1){
-        motor_davant(0xFF,1000);
+        //motor_dreta(0xFF,1000);
 
-        motor_esquerra(0xFF,1000);
+        //motor_esquerra(0xFF,1000);
 
+        //motor_davant(0xFF,1000);
+
+        //motor_darrere(0xFF,1000);
 
 
     }
 
-    return;
+    return 0;
 }
-
-
-
-
 
 #pragma vector = TIMER0_B0_VECTOR
 __interrupt void counter(){
     delay_counter++;
     TB0CCTL0 &= ~CCIFG;
 }
-
-
-
-
-
-
