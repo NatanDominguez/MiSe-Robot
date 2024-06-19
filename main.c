@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 /**
  * main.c
@@ -17,7 +18,8 @@ uint8_t RXByteCtr;
 uint8_t data_transmit[8];
 uint8_t data[3];
 uint8_t dir_joystick = 0x00;
-
+float ADC_sum = 0;
+float mesura;
 
 
 void init_clocks(){
@@ -74,14 +76,14 @@ void init_gpios(){
     P5OUT = BIT2;
 
     //JOYSTICK
-    P2SEL0 &= ~BIT2;
-    P6SEL1 &= ~BIT2;
-    P6DIR &= ~BIT2;
-    P2REN &= ~BIT2;
+    P2SEL0 &= ~(0x0F);
+    P2SEL1 &= ~(0x0F);
+    P2DIR &= ~(0x0F);
+    P2REN &= ~(0x0F);
 
-    P2IE |= BIT2;
-    P2IFG &= ~BIT2;
-    P2IES |= BIT2;
+    P2IE |= 0x0F;
+    P2IFG &= ~(0x0F);
+    P2IES |= 0x0F;
 
 }
 
@@ -166,7 +168,7 @@ void LEDS(uint8_t led_esq,uint8_t led_dret){
     data[0] = 0x0B;
     data[1] = led_esq;
     data[2] = led_dret;
-    i2c_send(0x10, data, 3);
+    I2C_send(0x10, data, 3);
 }
 
 
@@ -192,6 +194,17 @@ void LCD_init(){
     I2C_send(0x3E, data_LCD_init, 8);
 
     delay_ms(100);
+}
+
+void LCD_clear(){
+	char clear[2];
+
+	clear[0] = 0x00;
+	clear[1] = 0x01;
+
+	I2C_send(0x3E, clear, 2);
+
+	delay_ms(10);
 }
 
 void motor_davant(uint8_t vel_davant, uint8_t t_ms){
@@ -234,11 +247,134 @@ void motor_dreta(uint8_t vel_dreta, uint8_t t_ms){
     delay_ms(t_ms);
 }
 
+void control_motor_joystick(uint8_t dir_joystick, char data_LCD[18]){
+    uint8_t longitud;
+
+
+
+    if(dir_joystick == 0x00){
+        motor_davant(0x00, 1000);
+
+        LCD_clear();
+        longitud = sprintf(data_LCD, "@JOYSTICK: IDLE       ");
+        I2C_send(0x3E, data_LCD, longitud);
+    }
+    if(dir_joystick == 0x01){
+        motor_davant(0xFF, 1000);
+
+        LCD_clear();
+        longitud = sprintf(data_LCD, "@JOYSTICK: UP        ");
+        I2C_send(0x3E, data_LCD, longitud);
+    }
+    if(dir_joystick == 0x02){
+        motor_darrere(0xFF, 1000);
+
+        LCD_clear();
+        longitud = sprintf(data_LCD, "@JOYSTICK: DOWN      ");
+        I2C_send(0x3E, data_LCD, longitud);
+    }
+    if(dir_joystick == 0x04){
+        motor_esquerra(0xFF, 1000);
+
+        LCD_clear();
+        longitud = sprintf(data_LCD, "@JOYSTICK: RIGHT     ");
+        I2C_send(0x3E, data_LCD, longitud);
+    }
+    if(dir_joystick == 0x08){
+        motor_dreta(0xFF, 1000);
+
+        LCD_clear();
+        longitud = sprintf(data_LCD, "@JOYSTICK: LEFT      ");
+        I2C_send(0x3E, data_LCD, longitud);
+    }
+}
+
+void LDR_init(){
+	PM5CTL0 &= ~LOCKLPM5;
+    P5SEL0 |= (BIT0 | BIT1);        //inicialització dels pins ADC A1 i A2
+    P5SEL1 &= ~(BIT0 | BIT1);
+    ADCCTL0 |= ADCSHT_2 | ADCON;    //Sample and hold=16 clks, ADC mode ON
+    ADCCTL1 |= ADCSSEL_0 | ADCSHP;  // ADCLK=MODOSC. Font de senyal Timer intern.
+    ADCCTL1 |= ADCCONSEQ_0;         //Selecció mode de funcionament = Single-channel single-conversion. 1 canal. Mode 00b
+    ADCCTL2 &= ~ADCRES;             // clear ADCRES in ADCTL
+    ADCCTL2 |= ADCRES_2;            // 12 bits resolution
+    ADCIE = ADCIE0;                 // Habilita interrupció
+
+    /*
+	PM5CTL0 &= ~LOCKLPM5;
+
+	P5SEL0 |= BIT0|BIT1;	//funció alternativa 
+	P5SEL1 &= ~(BIT0|BIT1);
+
+	ADCCTL0 |= (ADCSHT_2 | ADCON);	//32 cicles per mesura i habilitem l'ADC
+
+	ADCCTL1 |= ADCSSEL_0 | ADCSHP;
+	ADCCTL1 |= ADCCONSEQ_0;	//single channel single conversion
+
+	ADCCTL2 &= ~ADCRES;
+	ADCCTL2 |= ADCRES_2;	//12 bits de resolució
+
+	ADCIE |= ADCIE0;	//habilitem les interrupcions per finalització de conversió
+	*/
+}
+
+float ADC_acquire(uint8_t canal){
+	/*
+    
+
+	ADCCTL0 &= ~ADCENC;
+
+	ADCMCTL0 &= 0xFFF0;
+	ADCMCTL0 |= canal;
+	
+	ADC_sum = 0;
+	iter = 0;
+
+	delay_ms(10);
+	
+	while (iter < 16){
+
+		ADCCTL0 |= ADCENC | ADCSC;
+
+		delay_ms(10);	//aquest delay ha de ser superior al temps de completitud d'una mesura
+
+		iter++;
+	}
+
+	return ADC_sum/16;
+	*/
+
+	uint8_t iter;
+
+	ADCCTL0 &= ~ADCENC;             // Deshabilitem el ADC perque si no no podem canviar el canal
+    ADCMCTL0 &= 0xFFF0;             // Necessitem netejar abans d'indicar que canal volem utilitzar per no trepitjar les dades anteriors
+    ADCMCTL0 |= canal;              // Selecció de canal
+
+    delay_ms(10);                      // Fem un delay abans de fer el bucle
+    ADC_sum = 0;                // Reiniciem el contador de mesures
+    iter = 0;                 // Reiniciem la suma total
+
+    // Hem de fer 16 medicions i després amb una interrupció esperar a que acabi per indicar que ha finalitzat la conversió
+    while (iter < 16) {
+        ADCCTL0 |= ADCENC | ADCSC;
+        // El ADCENC s'utilitza per habilitar el convertidor analògic digital per realitzar conversions (Si és 1 està preparat per realitzar la conversió)
+        // El ADCSC s'utilitza per iniciar una conversió ADC, quan el bit es posa a 1 el ADC comença el procés de mostreig i conversió
+        // Amb el OR activem els dos registres
+        delay_ms(20);
+
+        iter++;              // Augmentem el número de mesures
+    }
+
+    return ADC_sum/16;
+}
 
 int main(void)
 {
     uint8_t longitud;
+    uint8_t measure;
+
     char data_LCD[18];
+
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
 
     //init
@@ -250,55 +386,83 @@ int main(void)
     _enable_interrupt();
     LCD_init();
 
-    longitud = sprintf(data_LCD, "@ JOYSTICK: %d       ", dir_joystick);
-    I2C_send(0x3E, data_LCD, longitud);
-
     delay_ms(10);
 
     while(1){
 
-        longitud = sprintf(data_LCD, "@ JOYSTICK: %d       ", );
+        measure = ADC_acquire(0x00);
 
-        if((BIT2 & P2IN) == 0x00){
-            dir_joystick = 0x00;
-        }
-        if(dir_joystick == 0x02){
-            longitud = sprintf(data_LCD, "@ JOYSTICK: %d       ", dir_joystick);
-            I2C_send(0x3E, data_LCD, longitud);
+        LCD_clear();
 
-            motor_davant(0xFF, 1000);
-        }
-        //motor_dreta(0xFF,1000);
+        longitud = sprintf(data_LCD, "@LDR value: %d      ", measure);
+        I2C_send(0x3E, data_LCD, longitud);
 
-        //motor_esquerra(0xFF,1000);
 
-        //motor_davant(0xFF,1000);
-
-        //motor_darrere(0xFF,1000);
+        //control_motor_joystick(dir_joystick, data_LCD);
 
         delay_ms(10);
-
     }
 
     return 0;
 }
 
 #pragma vector = TIMER0_B0_VECTOR
-__interrupt void counter(){
+__interrupt void COUNTER(){
     delay_counter++;
     TB0CCTL0 &= ~CCIFG;
 }
 
+#pragma vector = PORT2_VECTOR		//DIRECCIÓ (dir_joystick): FORWARD -> BIT0 ON; BACKWARDS -> BIT1 ON; RIGHT -> BIT2 ON; LEFT -> BIT3 ON
+__interrupt void JOYSTICK_POS(){
+
+    if((P2IFG & BIT0) == BIT0){
+        P2IE &= ~BIT0;
+        dir_joystick ^= BIT0;
+
+        P2IES ^= BIT0;
+
+        P2IE |= BIT0;
+        P2IFG &= ~BIT0;
+    }
+    if((P2IFG & BIT1) == BIT1){
+        P2IE &= ~BIT1;
+        dir_joystick ^= BIT1;
+
+        P2IES ^= BIT1;
+
+        P2IE |= BIT1;
+        P2IFG &= ~BIT1;
+    }
+    if((P2IFG & BIT2) == BIT2){
+        P2IE &= ~BIT2;
+        dir_joystick ^= BIT2;
+
+        P2IES ^= BIT2;
+
+        P2IE |= BIT2;
+        P2IFG &= ~BIT2;
+    }
+    if((P2IFG & BIT3) == BIT3){
+        P2IE &= ~BIT3;
+        dir_joystick ^= BIT3;
+
+        P2IES ^= BIT3;
+
+        P2IE |= BIT3;
+        P2IFG &= ~BIT3;
+    }
+}
+
+#pragma vector = ADC_VECTOR
+__interrupt void ADC_MEASUREMENT(){
+    //només s'han habilitat les interrupcions per finalització de mesura
+    if (ADCIFG & ADCIFG0) {             // Conversion ready interrupt (hi ha una interrupció)
+        // El registre que guarda la dada del ADC és la ADCMEM0
+        mesura = ADCMEM0;
+        // Per poder normalitzar aquest número agafarem la nostra tensió màxima 3.2V
+        // Com el que volem fer és fer la mitjana de les 16 mesures el que farem serà una variable que pugui emmagatzemar tot per després poder dividir
+        ADC_sum = ADC_sum + mesura*(3.2/4096);
 
 
-#pragma vector = PORT2_VECTOR
-__interrupt void forward(){
-    P2IE &= ~BIT2;
-
-    dir_joystick = 0x02;
-
-    //motor = 1;
-
-    P2IE |= BIT2;
-    P2IFG &= ~BIT2;
+    }
 }
