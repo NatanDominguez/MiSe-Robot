@@ -20,6 +20,7 @@ uint8_t data[3];
 uint8_t dir_joystick = 0x00;
 float ADC_sum = 0;
 float mesura;
+bool act, select;
 
 
 void init_clocks(){
@@ -84,6 +85,17 @@ void init_gpios(){
     P2IE |= 0x0F;
     P2IFG &= ~(0x0F);
     P2IES |= 0x0F;
+
+    //BOTÓ JOYSTICK
+    P2SEL0 &= ~BIT4;
+    P2SEL1 &= ~BIT4;
+    P2DIR &= ~BIT4;
+    P2REN |= BIT4;
+    P2OUT &= ~BIT4;
+
+    P2IE |= BIT4;
+    P2IFG &= ~BIT4;
+    P2IES |= BIT4;
 
 }
 
@@ -371,7 +383,13 @@ float ADC_acquire(uint8_t canal){
 int main(void)
 {
     uint8_t longitud;
+
     uint8_t measure;
+
+    uint8_t state = 0x00;	//MENU: 0x00; LEDS: 0x01; MOVER ROBOT JOYSTICK: 0x02
+    uint8_t next = 0x00;
+
+    uint8_t llums_value;
 
     char data_LCD[18];
 
@@ -390,17 +408,76 @@ int main(void)
 
     while(1){
 
-        measure = ADC_acquire(0x00);
+    	LCD_clear();	//nova iteració
 
-        LCD_clear();
+    	//MENU:
 
-        longitud = sprintf(data_LCD, "@LDR value: %d      ", measure);
-        I2C_send(0x3E, data_LCD, longitud);
+    	if(state == 0x00){	//Menu principal
+    		
+    		//MOSTRAR INFORMACIÓ PEL LCD
+    		if(next == 0x00){
+    			longitud = sprintf(data_LCD, "@   ROBOT MISE                           ");
+    			I2C_send(0x3E, data_LCD, 40);
 
+    			longitud = sprintf(data_LCD, "@  NEHUEL & NATAN");
+    			I2C_send(0x3E, data_LCD, longitud);
 
-        //control_motor_joystick(dir_joystick, data_LCD);
+    		}
+    		else if(next == 0x01){
+    			longitud = sprintf(data_LCD, "@ CONTROL  LLUMS");
+    			I2C_send(0x3E, data_LCD, longitud);
+
+    		}
+    		else if(next == 0x02){
+    			longitud = sprintf(data_LCD, "@ CONTROL MANUAL                          ");
+    			I2C_send(0x3E, data_LCD, 40);
+    			longitud = sprintf(data_LCD, "@    DEL  MOTOR");
+    			I2C_send(0x3E, data_LCD, longitud);
+    		}
+    		else if(next == 0x03){
+    			longitud = sprintf(data_LCD, "@  SEGUIR  LLUM");
+    			I2C_send(0x3E, data_LCD, longitud);
+    		}
+
+    		//CONTROLAR L'OPCIÓ
+    		if((dir_joystick == 0x08) && (act == 1)){
+    			if(next < 0x03){
+    				next += 1;
+    			}
+    		}
+    		else if((dir_joystick == 0x04) && (act == 1)){
+    			if(next > 0x00){
+    				next -= 1;
+    			}
+    		}
+    		act = 0;
+
+    		if(select){	//es presiona el joystick (selecció de l'opció)
+    			state = next;
+    			select = 0;
+    		}
+    	}
+    	else if(state == 0x01){	//control LEDS
+
+    		longitud = sprintf(data_LCD, "@MODE: %d", llums_value);
+    		I2C_send(0x3E, data_LCD, longitud);
+
+    		if(select){
+    			state = 0x00;
+    			select = 0;
+    		}
+    	}
+    	else if(state == 0x02){	//control motor joystick
+    		control_motor_joystick(dir_joystick, data_LCD);
+
+    		if(select){
+    			state = 0x00;
+    			select = 0;
+    		}
+    	}
 
         delay_ms(10);
+
     }
 
     return 0;
@@ -414,6 +491,8 @@ __interrupt void COUNTER(){
 
 #pragma vector = PORT2_VECTOR		//DIRECCIÓ (dir_joystick): FORWARD -> BIT0 ON; BACKWARDS -> BIT1 ON; RIGHT -> BIT2 ON; LEFT -> BIT3 ON
 __interrupt void JOYSTICK_POS(){
+
+	act = 1;
 
     if((P2IFG & BIT0) == BIT0){
         P2IE &= ~BIT0;
@@ -450,6 +529,13 @@ __interrupt void JOYSTICK_POS(){
 
         P2IE |= BIT3;
         P2IFG &= ~BIT3;
+    }
+    if((P2IFG & BIT4) == BIT4){
+    	P2IE &= ~BIT4;
+    	select = 1;
+
+    	P2IE |= BIT4;
+    	P2IFG &= ~BIT4;
     }
 }
 
