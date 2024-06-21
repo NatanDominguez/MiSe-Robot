@@ -49,12 +49,12 @@ void init_timers(){
 
 void delay_ms(uint8_t temps){
     /*
-      Aquesta funciÛ genera un delay a partir d'un timer
+      Aquesta funci√≥ genera un delay a partir d'un timer
     */
 
     TB0CTL |= MC_1; //activem UP mode
     delay_counter = 0;
-    TB0CCR0 = 16000;   // no cal perÚ assegurem que l'escala de temps es troba en 1 ms
+    TB0CCR0 = 16000;   // no cal per√≤ assegurem que l'escala de temps es troba en 1 ms
     while(delay_counter < temps){
         continue;
     }
@@ -86,7 +86,7 @@ void init_gpios(){
     P2IFG &= ~(0x0F);
     P2IES |= 0x0F;
 
-    //BOT” JOYSTICK
+    //BOT√ì JOYSTICK
     P2SEL0 &= ~BIT4;
     P2SEL1 &= ~BIT4;
     P2DIR &= ~BIT4;
@@ -105,8 +105,8 @@ void init_gpios(){
 void i2c_init(){
     //P4SEL0 |= BIT7 + BIT6; * // P4.6 SDA i P4.7 SCL com a USCI si fem server USCI B1
     P1SEL0 |= BIT3 + BIT2; // P1.2 SDA i P1.3 SCL com a USCI si fem server USCI B0
-    UCB0CTLW0 |= UCSWRST; // Aturem el m√≤dul
-    //El configurem com a master, s√≠ncron i mode i2c, per defecte, est√  en single-master mode
+    UCB0CTLW0 |= UCSWRST; // Aturem el m√É¬≤dul
+    //El configurem com a master, s√É¬≠ncron i mode i2c, per defecte, est√É  en single-master mode
     UCB0CTLW0 |= UCMST + UCMODE_3 + UCSSEL_2; // Use SMCLK,
     UCB0BR0 = 160; // fSCL = SMCLK(16MHz)/160 = ~100kHz
     UCB0BR1 = 0;
@@ -115,12 +115,12 @@ void i2c_init(){
 }
 
 void I2C_receive(uint8_t addr, uint8_t *buffer, uint8_t n_dades){
-    PRxData = buffer; //adre√ßa del buffer on ficarem les dades rebudes
-    RXByteCtr = n_dades; //carreguem el n√∫mero de dades a rebre
-    UCB0I2CSA = addr; //Coloquem l‚Äôadre√ßa de slave
-    UCB0CTLW0 &= ~UCTR; //I2C en mode Recepci√≥
-    while (UCB0CTLW0 & UCTXSTP); //Ens assegurem que el bus est√  en stop
-    UCB0CTLW0 |= UCTXSTT; //I2C start condition en recepci√≥
+    PRxData = buffer; //adre√É¬ßa del buffer on ficarem les dades rebudes
+    RXByteCtr = n_dades; //carreguem el n√É¬∫mero de dades a rebre
+    UCB0I2CSA = addr; //Coloquem l√¢‚Ç¨‚Ñ¢adre√É¬ßa de slave
+    UCB0CTLW0 &= ~UCTR; //I2C en mode Recepci√É¬≥
+    while (UCB0CTLW0 & UCTXSTP); //Ens assegurem que el bus est√É  en stop
+    UCB0CTLW0 |= UCTXSTT; //I2C start condition en recepci√É¬≥
     __bis_SR_register(LPM0_bits + GIE); //Entrem en mode LPM0, enable interrupts
     __no_operation(); // Resta en mode LPM0 fins que es rebin totes les dades
 }
@@ -137,13 +137,13 @@ __interrupt void ISR_USCI_I2C(void){
         case USCI_I2C_UCRXIFG0: // Vector 10: RXIFG
 
             if (RXByteCtr){
-                *PRxData++ = UCB1RXBUF; // Mou la dada rebuda a l‚Äôadre√ßa PRxData
-                if (RXByteCtr == 1) // Queda nom√©s una?
+                *PRxData++ = UCB1RXBUF; // Mou la dada rebuda a l√¢‚Ç¨‚Ñ¢adre√É¬ßa PRxData
+                if (RXByteCtr == 1) // Queda nom√É¬©s una?
                     UCB0CTLW0 |= UCTXSTP; // Genera I2C stop condition
             }
 
             else{
-                *PRxData = UCB0RXBUF; // Mou la dada rebuda a l‚Äôadre√ßa PRxData
+                *PRxData = UCB0RXBUF; // Mou la dada rebuda a l√¢‚Ç¨‚Ñ¢adre√É¬ßa PRxData
                 __bic_SR_register_on_exit(LPM0_bits); // Exit del mode baix consum LPM0, activa la CPU
             }
 
@@ -167,13 +167,13 @@ __interrupt void ISR_USCI_I2C(void){
 }
 
 void I2C_send(uint8_t addr, uint8_t *buffer, uint8_t n_dades){
-    UCB0I2CSA = addr; //Coloquem líadreÁa de slave
-    PTxData = buffer; //adreÁa del bloc de dades a transmetre
-    TXByteCtr = n_dades; //carreguem el n˙mero de dades a transmetre;
-    UCB0CTLW0 |= UCTR + UCTXSTT; //I2C en mode TX, enviem la condiciÛ de start
+    UCB0I2CSA = addr; //Coloquem l‚Äôadre√ßa de slave
+    PTxData = buffer; //adre√ßa del bloc de dades a transmetre
+    TXByteCtr = n_dades; //carreguem el n√∫mero de dades a transmetre;
+    UCB0CTLW0 |= UCTR + UCTXSTT; //I2C en mode TX, enviem la condici√≥ de start
     __bis_SR_register(LPM0_bits + GIE); //Entrem a mode LPM0, enable interrupts
     __no_operation(); //Resta en mode LPM0 fins que es trasmetin les dades
-    while (UCB0CTLW0 & UCTXSTP); //Ens assegurem que s'ha enviat la condiciÛ de stop
+    while (UCB0CTLW0 & UCTXSTP); //Ens assegurem que s'ha enviat la condici√≥ de stop
 }
 
 void LEDS(uint8_t led_esq,uint8_t led_dret){
@@ -259,29 +259,29 @@ void motor_dreta(uint8_t vel_dreta, uint8_t t_ms){
     delay_ms(t_ms);
 }
 
-void control_llums(){
-    if(dir_joystick == 0x00){  //un encËs i l'altre apagat en blanc
+void control_llums(data_LCD, longitud){
+    if(dir_joystick == 0x00){  //un enc√®s i l'altre apagat en blanc
         LEDS(0,1);
         LCD_clear();
-        longitud = sprintf(data_LCD, "@LED DRET ENC»S       ");
+        longitud = sprintf(data_LCD, "@LED DRET ENC√àS       ");
         I2C_send(0x3E, data_LCD, longitud);
     }
-    if(dir_joystick == 0x01){  //un encËs i l'altre apagat en blanc
+    if(dir_joystick == 0x01){  //un enc√®s i l'altre apagat en blanc
         LEDS(1,0);
         LCD_clear();
-        longitud = sprintf(data_LCD, "@LED ESQUERRE ENC»S       ");
+        longitud = sprintf(data_LCD, "@LED ESQUERRE ENC√àS       ");
         I2C_send(0x3E, data_LCD, longitud);
     }
     if(dir_joystick == 0x02){  //dos encesos en blanc
             LEDS(1,1);
             LCD_clear();
-            longitud = sprintf(data_LCD, "@JOYSTICK: AMBD”S LEDS ENCESOS      ");
+            longitud = sprintf(data_LCD, "@JOYSTICK: AMBD√ìS LEDS ENCESOS      ");
             I2C_send(0x3E, data_LCD, longitud);
         }
     if(dir_joystick == 0x04){
         //hay q poner un texto concreto q activa los colores  //dos encesos de colors
-            colors =
-            I2C_send(0x3E, colors, );
+            //colors
+            //I2C_send(0x3E, colors, );
             LCD_clear();
             longitud = sprintf(data_LCD, "@LEDS DE COLORS      ");
             I2C_send(0x3E, data_LCD, longitud);
@@ -332,19 +332,19 @@ void control_motor_joystick(uint8_t dir_joystick, char data_LCD[18]){
 
 void LDR_init(){
     PM5CTL0 &= ~LOCKLPM5;
-    P5SEL0 |= (BIT0 | BIT1);        //inicialitzaciÛ dels pins ADC A1 i A2
+    P5SEL0 |= (BIT0 | BIT1);        //inicialitzaci√≥ dels pins ADC A1 i A2
     P5SEL1 &= ~(BIT0 | BIT1);
     ADCCTL0 |= ADCSHT_2 | ADCON;    //Sample and hold=16 clks, ADC mode ON
     ADCCTL1 |= ADCSSEL_0 | ADCSHP;  // ADCLK=MODOSC. Font de senyal Timer intern.
-    ADCCTL1 |= ADCCONSEQ_0;         //SelecciÛ mode de funcionament = Single-channel single-conversion. 1 canal. Mode 00b
+    ADCCTL1 |= ADCCONSEQ_0;         //Selecci√≥ mode de funcionament = Single-channel single-conversion. 1 canal. Mode 00b
     ADCCTL2 &= ~ADCRES;             // clear ADCRES in ADCTL
     ADCCTL2 |= ADCRES_2;            // 12 bits resolution
-    ADCIE = ADCIE0;                 // Habilita interrupciÛ
+    ADCIE = ADCIE0;                 // Habilita interrupci√≥
 
     /*
     PM5CTL0 &= ~LOCKLPM5;
 
-    P5SEL0 |= BIT0|BIT1;    //funciÛ alternativa
+    P5SEL0 |= BIT0|BIT1;    //funci√≥ alternativa
     P5SEL1 &= ~(BIT0|BIT1);
 
     ADCCTL0 |= (ADCSHT_2 | ADCON);  //32 cicles per mesura i habilitem l'ADC
@@ -353,9 +353,9 @@ void LDR_init(){
     ADCCTL1 |= ADCCONSEQ_0; //single channel single conversion
 
     ADCCTL2 &= ~ADCRES;
-    ADCCTL2 |= ADCRES_2;    //12 bits de resoluciÛ
+    ADCCTL2 |= ADCRES_2;    //12 bits de resoluci√≥
 
-    ADCIE |= ADCIE0;    //habilitem les interrupcions per finalitzaciÛ de conversiÛ
+    ADCIE |= ADCIE0;    //habilitem les interrupcions per finalitzaci√≥ de conversi√≥
     */
 }
 
@@ -389,21 +389,21 @@ float ADC_acquire(uint8_t canal){
 
     ADCCTL0 &= ~ADCENC;             // Deshabilitem el ADC perque si no no podem canviar el canal
     ADCMCTL0 &= 0xFFF0;             // Necessitem netejar abans d'indicar que canal volem utilitzar per no trepitjar les dades anteriors
-    ADCMCTL0 |= canal;              // SelecciÛ de canal
+    ADCMCTL0 |= canal;              // Selecci√≥ de canal
 
     delay_ms(10);                      // Fem un delay abans de fer el bucle
     ADC_sum = 0;                // Reiniciem el contador de mesures
     iter = 0;                 // Reiniciem la suma total
 
-    // Hem de fer 16 medicions i desprÈs amb una interrupciÛ esperar a que acabi per indicar que ha finalitzat la conversiÛ
+    // Hem de fer 16 medicions i despr√©s amb una interrupci√≥ esperar a que acabi per indicar que ha finalitzat la conversi√≥
     while (iter < 16) {
         ADCCTL0 |= ADCENC | ADCSC;
-        // El ADCENC s'utilitza per habilitar el convertidor analÚgic digital per realitzar conversions (Si Ès 1 est‡ preparat per realitzar la conversiÛ)
-        // El ADCSC s'utilitza per iniciar una conversiÛ ADC, quan el bit es posa a 1 el ADC comenÁa el procÈs de mostreig i conversiÛ
+        // El ADCENC s'utilitza per habilitar el convertidor anal√≤gic digital per realitzar conversions (Si √©s 1 est√† preparat per realitzar la conversi√≥)
+        // El ADCSC s'utilitza per iniciar una conversi√≥ ADC, quan el bit es posa a 1 el ADC comen√ßa el proc√©s de mostreig i conversi√≥
         // Amb el OR activem els dos registres
         delay_ms(20);
 
-        iter++;              // Augmentem el n˙mero de mesures
+        iter++;              // Augmentem el n√∫mero de mesures
     }
 
     return ADC_sum/16;
@@ -437,13 +437,13 @@ int main(void)
 
     while(1){
 
-        LCD_clear();    //nova iteraciÛ
+        LCD_clear();    //nova iteraci√≥
 
         //MENU:
 
         if(state == 0x00){  //Menu principal
 
-            //MOSTRAR INFORMACI” PEL LCD
+            //MOSTRAR INFORMACI√ì PEL LCD
             if(next == 0x00){
                 longitud = sprintf(data_LCD, "@   ROBOT MISE                           ");
                 I2C_send(0x3E, data_LCD, 40);
@@ -470,7 +470,7 @@ int main(void)
 
 
 
-            //CONTROLAR L'OPCI”
+            //CONTROLAR L'OPCI√ì
             if((dir_joystick == 0x08) && (act == 1)){
                 if(next < 0x03){
                     next += 1;
@@ -483,7 +483,7 @@ int main(void)
             }
             act = 0;
 
-            if(select){ //es presiona el joystick (selecciÛ de l'opciÛ)
+            if(select){ //es presiona el joystick (selecci√≥ de l'opci√≥)
                 state = next;
                 select = 0;
             }
@@ -492,7 +492,7 @@ int main(void)
 
             longitud = sprintf(data_LCD, "@MODE: %d", llums_value);
             I2C_send(0x3E, data_LCD, longitud);
-
+            control_llums();
             if(select){
                 state = 0x00;
                 select = 0;
@@ -520,7 +520,7 @@ __interrupt void COUNTER(){
     TB0CCTL0 &= ~CCIFG;
 }
 
-#pragma vector = PORT2_VECTOR       //DIRECCI” (dir_joystick): FORWARD -> BIT0 ON; BACKWARDS -> BIT1 ON; RIGHT -> BIT2 ON; LEFT -> BIT3 ON
+#pragma vector = PORT2_VECTOR       //DIRECCI√ì (dir_joystick): FORWARD -> BIT0 ON; BACKWARDS -> BIT1 ON; RIGHT -> BIT2 ON; LEFT -> BIT3 ON
 __interrupt void JOYSTICK_POS(){
 
     act = 1;
@@ -572,12 +572,12 @@ __interrupt void JOYSTICK_POS(){
 
 #pragma vector = ADC_VECTOR
 __interrupt void ADC_MEASUREMENT(){
-    //nomÈs s'han habilitat les interrupcions per finalitzaciÛ de mesura
-    if (ADCIFG & ADCIFG0) {             // Conversion ready interrupt (hi ha una interrupciÛ)
-        // El registre que guarda la dada del ADC Ès la ADCMEM0
+    //nom√©s s'han habilitat les interrupcions per finalitzaci√≥ de mesura
+    if (ADCIFG & ADCIFG0) {             // Conversion ready interrupt (hi ha una interrupci√≥)
+        // El registre que guarda la dada del ADC √©s la ADCMEM0
         mesura = ADCMEM0;
-        // Per poder normalitzar aquest n˙mero agafarem la nostra tensiÛ m‡xima 3.2V
-        // Com el que volem fer Ès fer la mitjana de les 16 mesures el que farem ser‡ una variable que pugui emmagatzemar tot per desprÈs poder dividir
+        // Per poder normalitzar aquest n√∫mero agafarem la nostra tensi√≥ m√†xima 3.2V
+        // Com el que volem fer √©s fer la mitjana de les 16 mesures el que farem ser√† una variable que pugui emmagatzemar tot per despr√©s poder dividir
         ADC_sum = ADC_sum + mesura*(3.2/4096);
 
 
